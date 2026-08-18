@@ -28,6 +28,7 @@ import os
 import uuid
 
 from bot import state
+from phase1_grants import commands as grants_commands
 from phase3_content.destinations import zaf_consultancy_fb_ig
 from shared import caption_generator, github_publish, telegram_api
 
@@ -43,7 +44,8 @@ WELCOME = (
     "<b>\U0001F916 ATN bot is online</b>\n\n"
     "Send a photo and I'll draft a caption + hashtags for you to approve "
     "before it posts to Facebook and Instagram.\n\n"
-    "<i>Grant discovery and monitoring (Phases 1 &amp; 2) aren't wired up yet.</i>"
+    "/grants -- curated funder list (Phase 1)\n\n"
+    "<i>Monitoring (Phase 2) and a live grant search sweep aren't wired up yet.</i>"
 )
 
 NOTHING_PENDING = "\U0001F937 Nothing pending to confirm right now."
@@ -58,6 +60,12 @@ VIDEO_NOT_SUPPORTED = (
 
 def handle_start(message):
     telegram_api.send_message(message["chat"]["id"], WELCOME, parse_mode="HTML")
+
+
+def handle_grants(message):
+    telegram_api.send_message(
+        message["chat"]["id"], grants_commands.format_funder_list(), parse_mode="HTML"
+    )
 
 
 def handle_photo(message):
@@ -168,6 +176,8 @@ def handle_message(message):
         handle_video(message)
     elif text.startswith("/start"):
         handle_start(message)
+    elif text.startswith("/grants"):
+        handle_grants(message)
     else:
         telegram_api.send_message(message["chat"]["id"], UNRECOGNIZED)
 
