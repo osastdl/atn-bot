@@ -30,6 +30,7 @@ from datetime import datetime, timezone
 
 from bot import state
 from phase1_grants import commands as grants_commands
+from phase2_monitor import commands as monitor_commands
 from phase3_content.destinations import zaf_consultancy_fb_ig
 from shared import caption_generator, github_publish, supabase_client, telegram_api
 
@@ -43,15 +44,23 @@ DEFAULT_DESTINATION = "zaf_consultancy"
 
 WELCOME = (
     "<b>\U0001F916 ATN bot is online</b>\n\n"
-    "Send a photo and I'll draft a caption + hashtags for you to approve "
-    "before it posts to Facebook and Instagram.\n\n"
-    "/grants -- curated funder list (Phase 1)\n\n"
-    "<i>Monitoring (Phase 2) and a live grant search sweep aren't wired up yet.</i>"
+    "Everything this bot does is one tap away below:\n\n"
+    "\U0001F4F8 <b>Post content</b> -- send a photo, I'll draft a caption "
+    "for your approval\n"
+    "\U0001F4CB <b>Grant list</b> -- curated funder list (Phase 1)\n"
+    "\U0001F4E1 <b>Monitoring</b> -- recent hate-crime/policy alerts (Phase 2)\n"
+    "☰ <b>Menu / Help</b> -- show this again"
+)
+
+POST_NUDGE = (
+    "\U0001F4F8 To post something, just send me the photo here (as an "
+    "attachment, not a link) -- I'll draft a caption and ask you to "
+    "confirm before it goes to Facebook and Instagram."
 )
 
 NOTHING_PENDING = "\U0001F937 Nothing pending to confirm right now."
 
-UNRECOGNIZED = "Send a photo to post it, or tap \U0001F4CB Grant list below."
+UNRECOGNIZED = "Not sure what you mean -- tap one of the buttons below, or send a photo to post it."
 
 VIDEO_NOT_SUPPORTED = (
     "\U0001F3AC Got the video, but video posting isn't wired up yet -- "
@@ -61,6 +70,7 @@ VIDEO_NOT_SUPPORTED = (
 BOT_COMMANDS = [
     {"command": "start", "description": "Show the menu"},
     {"command": "grants", "description": "Curated funder list (Phase 1)"},
+    {"command": "monitor", "description": "Recent monitoring alerts (Phase 2)"},
 ]
 
 
@@ -74,6 +84,23 @@ def handle_start(message):
 def handle_grants(message):
     telegram_api.send_message(
         message["chat"]["id"], grants_commands.format_funder_list(), parse_mode="HTML",
+        reply_markup=telegram_api.PERSISTENT_KEYBOARD,
+    )
+
+
+def handle_monitor(message):
+    telegram_api.send_message(
+        message["chat"]["id"], monitor_commands.format_recent_alerts(), parse_mode="HTML",
+        reply_markup=telegram_api.PERSISTENT_KEYBOARD,
+    )
+
+
+def handle_post_nudge(message):
+    # There's no Telegram equivalent of the website's upload form to tap
+    # into -- the real action a user needs is just "attach and send a
+    # photo," so this button's whole job is telling them that.
+    telegram_api.send_message(
+        message["chat"]["id"], POST_NUDGE,
         reply_markup=telegram_api.PERSISTENT_KEYBOARD,
     )
 
@@ -234,10 +261,14 @@ def handle_message(message):
         handle_photo(message)
     elif "video" in message:
         handle_video(message)
-    elif text.startswith("/start"):
+    elif text.startswith("/start") or text == "☰ menu / help":
         handle_start(message)
     elif text.startswith("/grants") or text == "\U0001F4CB grant list":
         handle_grants(message)
+    elif text.startswith("/monitor") or text == "\U0001F4E1 monitoring":
+        handle_monitor(message)
+    elif text == "\U0001F4F8 post content":
+        handle_post_nudge(message)
     else:
         telegram_api.send_message(
             message["chat"]["id"], UNRECOGNIZED,

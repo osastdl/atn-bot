@@ -95,6 +95,25 @@ def insert_scheduled_post(destination, image_url, caption, scheduled_for_iso, cr
     )[0]
 
 
+def list_recent_notifications(phase, limit=5):
+    """phase: 'phase1_grants' or 'phase2_monitor'. Newest first."""
+    cfg = _config()
+    token = _access_token(cfg)
+    query = urllib.parse.urlencode(
+        {
+            "phase": f"eq.{phase}",
+            "order": "created_at.desc",
+            "limit": str(limit),
+            "select": "*",
+        }
+    )
+    return _request(
+        "GET",
+        f"{cfg['url']}/rest/v1/atn_notifications?{query}",
+        headers={"apikey": cfg["anon_key"], "Authorization": f"Bearer {token}"},
+    )
+
+
 def list_due_scheduled_posts(now_iso):
     cfg = _config()
     token = _access_token(cfg)

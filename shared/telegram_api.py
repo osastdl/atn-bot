@@ -70,8 +70,15 @@ def set_my_commands(commands):
     return call("setMyCommands", commands=commands)
 
 
+# Every core action visible as a tap, 2x2, so a new client can use this
+# without being walked through it -- nothing relies on knowing a "/"
+# command exists. Mirrors the three website nav items (Post, Monitoring,
+# Grants) plus a Menu/Help button standing in for /start.
 PERSISTENT_KEYBOARD = {
-    "keyboard": [["\U0001F4CB Grant list"]],
+    "keyboard": [
+        ["\U0001F4F8 Post content", "\U0001F4CB Grant list"],
+        ["\U0001F4E1 Monitoring", "☰ Menu / Help"],
+    ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
