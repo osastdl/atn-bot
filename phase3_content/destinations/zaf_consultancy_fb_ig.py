@@ -40,12 +40,28 @@ def _post(url, params):
         raise RuntimeError(f"Graph API error {e.code}: {e.read().decode('utf-8')}") from None
 
 
+def _get(url, params):
+    query = urllib.parse.urlencode(params)
+    req = urllib.request.Request(f"{url}?{query}")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Graph API error {e.code}: {e.read().decode('utf-8')}") from None
+
+
 def post_to_facebook(image_url, caption):
     cfg = _config()
-    return _post(
+    result = _post(
         f"{GRAPH}/{cfg['page_id']}/photos",
         {"url": image_url, "caption": caption, "access_token": cfg["page_token"]},
     )
+    post_id = result["post_id"]
+    permalink = _get(
+        f"{GRAPH}/{post_id}",
+        {"fields": "permalink_url", "access_token": cfg["page_token"]},
+    )["permalink_url"]
+    return {"id": post_id, "url": permalink}
 
 
 def post_to_instagram(image_url, caption):
@@ -59,10 +75,16 @@ def post_to_instagram(image_url, caption):
     # For static images (unlike video/reels) the container is ready
     # immediately -- querying its status_code right after creation is a
     # known source of a spurious "object does not exist" 400, so don't.
-    return _post(
+    published = _post(
         f"{GRAPH}/{cfg['ig_user_id']}/media_publish",
         {"creation_id": creation_id, "access_token": cfg["page_token"]},
     )
+    media_id = published["id"]
+    permalink = _get(
+        f"{GRAPH}/{media_id}",
+        {"fields": "permalink", "access_token": cfg["page_token"]},
+    )["permalink"]
+    return {"id": media_id, "url": permalink}
 
 
 def post(image_url, caption):

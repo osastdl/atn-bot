@@ -23,6 +23,7 @@ far. A video message gets acknowledged but not posted; see
 phase3_content/README.md.
 """
 
+import html
 import os
 import uuid
 
@@ -70,14 +71,16 @@ def handle_photo(message):
     short_id = state.add_pending(
         {
             "image_url": image_url,
+            "file_id": file_id,
             "caption": full_caption,
             "destination": DEFAULT_DESTINATION,
         }
     )
 
-    sent = telegram_api.send_message(
+    sent = telegram_api.send_photo(
         chat_id,
-        f"{full_caption}\n\n---\nSend \"post\" to publish, or \"cancel\" to discard.",
+        photo=file_id,
+        caption=f"{full_caption}\n\n---\nSend \"post\" to publish, or \"cancel\" to discard.",
     )
 
     pending = state.load_pending()
@@ -114,15 +117,31 @@ def handle_reply_confirmation(message):
     state.pop_pending(short_id)
 
     if action == "cancel":
-        telegram_api.send_message(chat_id, "Cancelled.")
+        telegram_api.send_photo(chat_id, photo=entry["file_id"], caption="Cancelled -- not posted.")
         return
 
     destination = DESTINATIONS[entry["destination"]]
     try:
         result = destination.post(entry["image_url"], entry["caption"])
-        telegram_api.send_message(chat_id, f"Posted.\n\n{result}")
+        fb_url = html.escape(result["facebook"]["url"])
+        ig_url = html.escape(result["instagram"]["url"])
+        telegram_api.send_photo(
+            chat_id,
+            photo=entry["file_id"],
+            caption=(
+                "<b>✅ Posted successfully</b>\n\n"
+                f'\U0001F4D8 <a href="{fb_url}">View on Facebook</a>\n'
+                f'\U0001F4F7 <a href="{ig_url}">View on Instagram</a>'
+            ),
+            parse_mode="HTML",
+        )
     except Exception as e:
-        telegram_api.send_message(chat_id, f"Failed to post: {e}")
+        telegram_api.send_photo(
+            chat_id,
+            photo=entry["file_id"],
+            caption=f"❌ <b>Failed to post</b>\n\n{html.escape(str(e))}",
+            parse_mode="HTML",
+        )
 
 
 def handle_message(message):

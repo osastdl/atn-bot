@@ -40,11 +40,24 @@ def get_updates(offset=None, timeout=30):
     return call("getUpdates", **params)
 
 
-def send_message(chat_id, text, reply_markup=None):
+def send_message(chat_id, text, reply_markup=None, parse_mode=None):
     params = {"chat_id": chat_id, "text": text}
     if reply_markup is not None:
         params["reply_markup"] = reply_markup
+    if parse_mode is not None:
+        params["parse_mode"] = parse_mode
     return call("sendMessage", **params)
+
+
+def send_photo(chat_id, photo, caption=None, parse_mode=None):
+    """photo can be a Telegram file_id (reuse what was already uploaded --
+    no need to re-fetch/re-send the bytes) or a public URL."""
+    params = {"chat_id": chat_id, "photo": photo}
+    if caption is not None:
+        params["caption"] = caption
+    if parse_mode is not None:
+        params["parse_mode"] = parse_mode
+    return call("sendPhoto", **params)
 
 
 def get_file_path(file_id):
