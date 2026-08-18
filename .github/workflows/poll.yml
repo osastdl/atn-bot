@@ -5,6 +5,16 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
+# Without this, the default GITHUB_TOKEN is read-only and the "Commit
+# updated bot state" step below fails silently on every single run ("403:
+# Write access to repository not granted") -- the offset never actually
+# saves, so every run re-reads the same old Telegram messages from
+# scratch and re-sends replies to all of them. This was live in
+# production for hours before being caught (2026-08-18) -- confirmed via
+# `gh run list` showing every scheduled run as "failure".
+permissions:
+  contents: write
+
 jobs:
   poll:
     runs-on: ubuntu-latest
