@@ -36,5 +36,43 @@ def get_updates(offset=None, timeout=30):
     return call("getUpdates", **params)
 
 
-def send_message(chat_id, text):
-    return call("sendMessage", chat_id=chat_id, text=text)
+def send_message(chat_id, text, reply_markup=None):
+    params = {"chat_id": chat_id, "text": text}
+    if reply_markup is not None:
+        params["reply_markup"] = reply_markup
+    return call("sendMessage", **params)
+
+
+def edit_message_text(chat_id, message_id, text, reply_markup=None):
+    params = {"chat_id": chat_id, "message_id": message_id, "text": text}
+    if reply_markup is not None:
+        params["reply_markup"] = reply_markup
+    return call("editMessageText", **params)
+
+
+def answer_callback_query(callback_query_id, text=None):
+    params = {"callback_query_id": callback_query_id}
+    if text is not None:
+        params["text"] = text
+    return call("answerCallbackQuery", **params)
+
+
+def confirm_keyboard(short_id):
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "Post", "callback_data": f"post:{short_id}"},
+                {"text": "Cancel", "callback_data": f"cancel:{short_id}"},
+            ]
+        ]
+    }
+
+
+def get_file_path(file_id):
+    return call("getFile", file_id=file_id)["result"]["file_path"]
+
+
+def download_file(file_path):
+    url = f"https://api.telegram.org/file/bot{_token()}/{file_path}"
+    with urllib.request.urlopen(url) as resp:
+        return resp.read()

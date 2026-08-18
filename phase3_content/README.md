@@ -21,3 +21,23 @@ module is ATN-branded.
 
 Built first among the three phases: fastest way to prove the fresh
 Telegram + Meta credentials work end to end, lowest risk.
+
+**Photo flow (built 2026-08-18)**: send the bot a photo, it looks at the
+actual image and drafts a caption + hashtags (no persona/voice shaping --
+tried that, dropped it, just accurate captions), publishes the image
+publicly, and replies with Post/Cancel buttons -- nothing goes to
+Facebook/Instagram until you tap Post. Runs as a scheduled GitHub Actions
+job polling every ~5 minutes (`bot/main.py`, `.github/workflows/poll.yml`),
+not a persistent server. State lives in `content/offset.json` and
+`content/pending_posts.json`, committed back to the repo each run.
+
+**Video is not wired up yet** -- the bot acknowledges a video message but
+doesn't post it. Would need: extracting Telegram's thumbnail for caption
+generation, and a video-specific Graph API flow (container + status
+polling + publish) in the destination modules, which currently only
+handle images.
+
+**Still needed before this actually runs**: `ANTHROPIC_API_KEY` (vision
+caption generation) and `IMAGE_REPO_TOKEN` (a GitHub token scoped to the
+image repos, so the scheduled job can publish photos without a local git
+checkout).
