@@ -26,11 +26,12 @@ phase3_content/README.md.
 import html
 import os
 import uuid
+from datetime import datetime, timezone
 
 from bot import state
 from phase1_grants import commands as grants_commands
 from phase3_content.destinations import zaf_consultancy_fb_ig
-from shared import caption_generator, github_publish, telegram_api
+from shared import caption_generator, github_publish, supabase_client, telegram_api
 
 IMAGE_REPO = "osastdl/zaf-consultancy-post-images"
 
@@ -108,7 +109,9 @@ def handle_photo(message):
         photo=file_id,
         caption=(
             f"\U0001F4DD <b>Draft caption</b>\n\n{html.escape(full_caption)}\n\n"
-            f'<i>Send "post" to publish, or "cancel" to discard.</i>'
+            f'<i>Send "post" to publish now, "cancel" to discard, or '
+            f'"schedule YYYY-MM-DD HH:MM" to publish later (time is UTC -- '
+            f"South Africa is UTC+2, so 8am SAST = schedule ...  06:00).</i>"
         ),
         parse_mode="HTML",
     )
@@ -175,9 +178,52 @@ def handle_reply_confirmation(message):
         )
 
 
+def handle_schedule(message):
+    chat_id = message["chat"]["id"]
+    raw_text = message["text"].strip()
+    time_part = raw_text[len("schedule"):].strip()
+
+    try:
+        when = datetime.strptime(time_part, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    except ValueError:
+        telegram_api.send_message(
+            chat_id,
+            '⚠️ Couldn\'t read that time. Use: "schedule YYYY-MM-DD HH:MM" '
+            '(UTC), e.g. "schedule 2026-08-19 06:00".',
+        )
+        return
+
+    if when <= datetime.now(timezone.utc):
+        telegram_api.send_message(chat_id, "⚠️ That time is in the past -- pick a future time.")
+        return
+
+    short_id, entry = state.find_oldest_pending(chat_id)
+    if entry is None:
+        telegram_api.send_message(chat_id, NOTHING_PENDING)
+        return
+
+    state.pop_pending(short_id)
+    supabase_client.insert_scheduled_post(
+        destination=entry["destination"],
+        image_url=entry["image_url"],
+        caption=entry["caption"],
+        scheduled_for_iso=when.isoformat(),
+        created_via="telegram",
+    )
+
+    telegram_api.send_photo(
+        chat_id,
+        photo=entry["file_id"],
+        caption=f"\U0001F4C5 <b>Scheduled</b> for {when.strftime('%Y-%m-%d %H:%M')} UTC.",
+        parse_mode="HTML",
+    )
+
+
 def handle_message(message):
     text = message.get("text", "").strip().lower()
-    if text in ("post", "cancel"):
+    if text.startswith("schedule"):
+        handle_schedule(message)
+    elif text in ("post", "cancel"):
         handle_reply_confirmation(message)
     elif "photo" in message:
         handle_photo(message)
