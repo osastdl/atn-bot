@@ -49,7 +49,7 @@ def send_message(chat_id, text, reply_markup=None, parse_mode=None):
     return call("sendMessage", **params)
 
 
-def send_photo(chat_id, photo, caption=None, parse_mode=None):
+def send_photo(chat_id, photo, caption=None, parse_mode=None, reply_markup=None):
     """photo can be a Telegram file_id (reuse what was already uploaded --
     no need to re-fetch/re-send the bytes) or a public URL."""
     params = {"chat_id": chat_id, "photo": photo}
@@ -57,6 +57,8 @@ def send_photo(chat_id, photo, caption=None, parse_mode=None):
         params["caption"] = caption
     if parse_mode is not None:
         params["parse_mode"] = parse_mode
+    if reply_markup is not None:
+        params["reply_markup"] = reply_markup
     return call("sendPhoto", **params)
 
 
@@ -72,6 +74,16 @@ PERSISTENT_KEYBOARD = {
     "keyboard": [["\U0001F4CB Grant list"]],
     "resize_keyboard": True,
     "is_persistent": True,
+}
+
+# "post"/"cancel" are fixed strings, so real tappable buttons work fine
+# here -- unlike inline keyboards (callback queries), a reply-keyboard tap
+# just sends its label as a normal text message, no expiry problem.
+# Scheduling still needs an actual typed date, so it stays text-only.
+CONFIRM_KEYBOARD = {
+    "keyboard": [["post", "cancel"]],
+    "resize_keyboard": True,
+    "one_time_keyboard": True,
 }
 
 

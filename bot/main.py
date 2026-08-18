@@ -109,11 +109,12 @@ def handle_photo(message):
         photo=file_id,
         caption=(
             f"\U0001F4DD <b>Draft caption</b>\n\n{html.escape(full_caption)}\n\n"
-            f'<i>Send "post" to publish now, "cancel" to discard, or '
+            f'<i>Tap Post or Cancel below, or type '
             f'"schedule YYYY-MM-DD HH:MM" to publish later (time is UTC -- '
             f"South Africa is UTC+2, so 8am SAST = schedule ...  06:00).</i>"
         ),
         parse_mode="HTML",
+        reply_markup=telegram_api.CONFIRM_KEYBOARD,
     )
 
     pending = state.load_pending()
@@ -151,6 +152,7 @@ def handle_reply_confirmation(message):
             photo=entry["file_id"],
             caption="\U0001F6AB <b>Cancelled</b> -- not posted.",
             parse_mode="HTML",
+            reply_markup=telegram_api.PERSISTENT_KEYBOARD,
         )
         return
 
@@ -168,6 +170,7 @@ def handle_reply_confirmation(message):
                 f'\U0001F4F7 <a href="{ig_url}">View on Instagram</a>'
             ),
             parse_mode="HTML",
+            reply_markup=telegram_api.PERSISTENT_KEYBOARD,
         )
     except Exception as e:
         telegram_api.send_photo(
@@ -175,6 +178,7 @@ def handle_reply_confirmation(message):
             photo=entry["file_id"],
             caption=f"❌ <b>Failed to post</b>\n\n{html.escape(str(e))}",
             parse_mode="HTML",
+            reply_markup=telegram_api.PERSISTENT_KEYBOARD,
         )
 
 
@@ -216,6 +220,7 @@ def handle_schedule(message):
         photo=entry["file_id"],
         caption=f"\U0001F4C5 <b>Scheduled</b> for {when.strftime('%Y-%m-%d %H:%M')} UTC.",
         parse_mode="HTML",
+        reply_markup=telegram_api.PERSISTENT_KEYBOARD,
     )
 
 
