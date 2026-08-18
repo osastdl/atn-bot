@@ -8,8 +8,11 @@ those files back to the repo after each run.
 
 Photo flow: photo in -> generate caption+hashtags from a template pool
 (same approach as VV Outreach's poster.py -- not a vision API call) ->
-publish image publicly -> reply with Post/Cancel buttons -> only posts to
-Facebook/Instagram once you tap Post.
+publish image publicly -> reply to the bot's message with "post" or
+"cancel". Deliberately NOT inline buttons: Telegram callback queries
+expire within seconds, which a ~5-minute poll cycle can never catch in
+time (confirmed by hitting exactly that error) -- plain text replies
+don't have that problem.
 
 Video is NOT wired yet -- destinations only know how to post images so
 far. A video message gets acknowledged but not posted; see
@@ -70,8 +73,7 @@ def handle_photo(message):
 
     sent = telegram_api.send_message(
         chat_id,
-        f"{full_caption}\n\n---\nPost this?",
-        reply_markup=telegram_api.confirm_keyboard(short_id),
+        f"{full_caption}\n\n---\nReply to this message with \"post\" to publish, or \"cancel\" to discard.",
     )
 
     pending = state.load_pending()
@@ -88,39 +90,39 @@ def handle_video(message):
     )
 
 
-def handle_callback_query(callback_query):
-    data = callback_query["data"]
-    telegram_api.answer_callback_query(callback_query["id"])
+def handle_reply_confirmation(message):
+    chat_id = message["chat"]["id"]
+    replied_to_id = message["reply_to_message"]["message_id"]
+    action = message["text"].strip().lower()
 
-    action, short_id = data.split(":", 1)
-    chat_id = callback_query["message"]["chat"]["id"]
-    message_id = callback_query["message"]["message_id"]
-
-    entry = state.pop_pending(short_id)
+    short_id, entry = state.find_pending_by_message_id(replied_to_id)
     if entry is None:
-        telegram_api.edit_message_text(chat_id, message_id, "This post already expired.")
+        telegram_api.send_message(chat_id, "Couldn't find that pending post -- it may already be handled.")
         return
 
+    state.pop_pending(short_id)
+
     if action == "cancel":
-        telegram_api.edit_message_text(chat_id, message_id, "Cancelled.")
+        telegram_api.send_message(chat_id, "Cancelled.")
         return
 
     destination = DESTINATIONS[entry["destination"]]
     try:
         result = destination.post(entry["image_url"], entry["caption"])
-        telegram_api.edit_message_text(
-            chat_id, message_id, f"Posted.\n\n{result}"
-        )
+        telegram_api.send_message(chat_id, f"Posted.\n\n{result}")
     except Exception as e:
-        telegram_api.edit_message_text(chat_id, message_id, f"Failed to post: {e}")
+        telegram_api.send_message(chat_id, f"Failed to post: {e}")
 
 
 def handle_message(message):
-    if "photo" in message:
+    text = message.get("text", "").strip().lower()
+    if "reply_to_message" in message and text in ("post", "cancel"):
+        handle_reply_confirmation(message)
+    elif "photo" in message:
         handle_photo(message)
     elif "video" in message:
         handle_video(message)
-    elif message.get("text", "").startswith("/start"):
+    elif text.startswith("/start"):
         handle_start(message)
     else:
         telegram_api.send_message(
@@ -135,8 +137,6 @@ def poll_once():
         state.set_offset(update["update_id"] + 1)
         if "message" in update:
             handle_message(update["message"])
-        elif "callback_query" in update:
-            handle_callback_query(update["callback_query"])
 
 
 if __name__ == "__main__":

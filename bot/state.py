@@ -47,3 +47,12 @@ def pop_pending(short_id):
     entry = pending.pop(short_id, None)
     save_pending(pending)
     return entry
+
+
+def find_pending_by_message_id(message_id):
+    """Correlates a reply back to the pending entry it's replying to."""
+    pending = load_pending()
+    for short_id, entry in pending.items():
+        if entry.get("message_id") == message_id:
+            return short_id, entry
+    return None, None
