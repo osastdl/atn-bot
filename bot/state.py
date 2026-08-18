@@ -56,3 +56,14 @@ def find_pending_by_message_id(message_id):
         if entry.get("message_id") == message_id:
             return short_id, entry
     return None, None
+
+
+def find_oldest_pending(chat_id):
+    """Fallback when a "post"/"cancel" isn't sent as an actual Telegram
+    reply (common -- clients vary, users don't always use the gesture).
+    Dict preserves insertion order, so the first match is the oldest."""
+    pending = load_pending()
+    for short_id, entry in pending.items():
+        if entry.get("chat_id") == chat_id:
+            return short_id, entry
+    return None, None

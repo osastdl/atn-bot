@@ -8,11 +8,15 @@ those files back to the repo after each run.
 
 Photo flow: photo in -> generate caption+hashtags from a template pool
 (same approach as VV Outreach's poster.py -- not a vision API call) ->
-publish image publicly -> reply to the bot's message with "post" or
-"cancel". Deliberately NOT inline buttons: Telegram callback queries
+publish image publicly -> send "post" or "cancel" as a plain message to
+confirm. Deliberately NOT inline buttons: Telegram callback queries
 expire within seconds, which a ~5-minute poll cycle can never catch in
-time (confirmed by hitting exactly that error) -- plain text replies
-don't have that problem.
+time (confirmed by hitting exactly that error). Also deliberately not
+requiring an actual Telegram reply-to-message, even though that would be
+more precise when multiple posts are pending at once -- in practice not
+every client reliably sends that gesture as real reply data (confirmed
+by it silently not registering, twice), so "post"/"cancel" just resolves
+to the oldest pending post for that chat instead.
 
 Video is NOT wired yet -- destinations only know how to post images so
 far. A video message gets acknowledged but not posted; see
@@ -73,7 +77,7 @@ def handle_photo(message):
 
     sent = telegram_api.send_message(
         chat_id,
-        f"{full_caption}\n\n---\nReply to this message with \"post\" to publish, or \"cancel\" to discard.",
+        f"{full_caption}\n\n---\nSend \"post\" to publish, or \"cancel\" to discard.",
     )
 
     pending = state.load_pending()
@@ -92,12 +96,19 @@ def handle_video(message):
 
 def handle_reply_confirmation(message):
     chat_id = message["chat"]["id"]
-    replied_to_id = message["reply_to_message"]["message_id"]
     action = message["text"].strip().lower()
 
-    short_id, entry = state.find_pending_by_message_id(replied_to_id)
+    # Prefer an actual Telegram reply if there is one, but don't require
+    # it -- in practice not every client/user reliably uses the reply
+    # gesture, so fall back to "the oldest thing still waiting" instead
+    # of leaving a plain "post" message with nowhere to go.
+    short_id, entry = None, None
+    if "reply_to_message" in message:
+        short_id, entry = state.find_pending_by_message_id(message["reply_to_message"]["message_id"])
     if entry is None:
-        telegram_api.send_message(chat_id, "Couldn't find that pending post -- it may already be handled.")
+        short_id, entry = state.find_oldest_pending(chat_id)
+    if entry is None:
+        telegram_api.send_message(chat_id, "Nothing pending to confirm right now.")
         return
 
     state.pop_pending(short_id)
@@ -116,7 +127,7 @@ def handle_reply_confirmation(message):
 
 def handle_message(message):
     text = message.get("text", "").strip().lower()
-    if "reply_to_message" in message and text in ("post", "cancel"):
+    if text in ("post", "cancel"):
         handle_reply_confirmation(message)
     elif "photo" in message:
         handle_photo(message)
