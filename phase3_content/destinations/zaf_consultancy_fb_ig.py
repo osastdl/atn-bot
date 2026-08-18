@@ -15,7 +15,7 @@ re-exchange periodically, same process as before.
 
 import json
 import os
-import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -33,8 +33,11 @@ def _config():
 def _post(url, params):
     query = urllib.parse.urlencode(params)
     req = urllib.request.Request(f"{url}?{query}", method="POST")
-    with urllib.request.urlopen(req) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"Graph API error {e.code}: {e.read().decode('utf-8')}") from None
 
 
 def post_to_facebook(image_url, caption):
@@ -53,17 +56,9 @@ def post_to_instagram(image_url, caption):
     )
     creation_id = container["id"]
 
-    # Instagram needs a moment to finish processing the container before
-    # it can be published -- poll status_code instead of a fixed sleep.
-    for _ in range(10):
-        status = _post(
-            f"{GRAPH}/{creation_id}",
-            {"fields": "status_code", "access_token": cfg["page_token"]},
-        )
-        if status.get("status_code") == "FINISHED":
-            break
-        time.sleep(3)
-
+    # For static images (unlike video/reels) the container is ready
+    # immediately -- querying its status_code right after creation is a
+    # known source of a spurious "object does not exist" 400, so don't.
     return _post(
         f"{GRAPH}/{cfg['ig_user_id']}/media_publish",
         {"creation_id": creation_id, "access_token": cfg["page_token"]},
