@@ -40,15 +40,24 @@ DESTINATIONS = {"zaf_consultancy": zaf_consultancy_fb_ig}
 DEFAULT_DESTINATION = "zaf_consultancy"
 
 WELCOME = (
-    "ATN bot is online.\n\n"
+    "<b>\U0001F916 ATN bot is online</b>\n\n"
     "Send a photo and I'll draft a caption + hashtags for you to approve "
-    "before it posts. Phase 1 (grants) and Phase 2 (monitoring) aren't "
-    "wired up yet."
+    "before it posts to Facebook and Instagram.\n\n"
+    "<i>Grant discovery and monitoring (Phases 1 &amp; 2) aren't wired up yet.</i>"
+)
+
+NOTHING_PENDING = "\U0001F937 Nothing pending to confirm right now."
+
+UNRECOGNIZED = "Send a photo, or /start."
+
+VIDEO_NOT_SUPPORTED = (
+    "\U0001F3AC Got the video, but video posting isn't wired up yet -- "
+    "only photos work right now."
 )
 
 
 def handle_start(message):
-    telegram_api.send_message(message["chat"]["id"], WELCOME)
+    telegram_api.send_message(message["chat"]["id"], WELCOME, parse_mode="HTML")
 
 
 def handle_photo(message):
@@ -80,7 +89,11 @@ def handle_photo(message):
     sent = telegram_api.send_photo(
         chat_id,
         photo=file_id,
-        caption=f"{full_caption}\n\n---\nSend \"post\" to publish, or \"cancel\" to discard.",
+        caption=(
+            f"\U0001F4DD <b>Draft caption</b>\n\n{html.escape(full_caption)}\n\n"
+            f'<i>Send "post" to publish, or "cancel" to discard.</i>'
+        ),
+        parse_mode="HTML",
     )
 
     pending = state.load_pending()
@@ -90,11 +103,7 @@ def handle_photo(message):
 
 
 def handle_video(message):
-    telegram_api.send_message(
-        message["chat"]["id"],
-        "Got the video, but video posting isn't wired up yet -- only "
-        "photos work right now.",
-    )
+    telegram_api.send_message(message["chat"]["id"], VIDEO_NOT_SUPPORTED)
 
 
 def handle_reply_confirmation(message):
@@ -111,13 +120,18 @@ def handle_reply_confirmation(message):
     if entry is None:
         short_id, entry = state.find_oldest_pending(chat_id)
     if entry is None:
-        telegram_api.send_message(chat_id, "Nothing pending to confirm right now.")
+        telegram_api.send_message(chat_id, NOTHING_PENDING)
         return
 
     state.pop_pending(short_id)
 
     if action == "cancel":
-        telegram_api.send_photo(chat_id, photo=entry["file_id"], caption="Cancelled -- not posted.")
+        telegram_api.send_photo(
+            chat_id,
+            photo=entry["file_id"],
+            caption="\U0001F6AB <b>Cancelled</b> -- not posted.",
+            parse_mode="HTML",
+        )
         return
 
     destination = DESTINATIONS[entry["destination"]]
@@ -155,9 +169,7 @@ def handle_message(message):
     elif text.startswith("/start"):
         handle_start(message)
     else:
-        telegram_api.send_message(
-            message["chat"]["id"], "Send a photo, or /start."
-        )
+        telegram_api.send_message(message["chat"]["id"], UNRECOGNIZED)
 
 
 def poll_once():
