@@ -6,9 +6,10 @@ long-lived loop. State (Telegram offset, pending post confirmations)
 persists to content/*.json between runs; the calling workflow commits
 those files back to the repo after each run.
 
-Photo flow: photo in -> generate caption+hashtags from the actual image
--> publish image publicly -> reply with Post/Cancel buttons -> only posts
-to Facebook/Instagram once you tap Post.
+Photo flow: photo in -> generate caption+hashtags from a template pool
+(same approach as VV Outreach's poster.py -- not a vision API call) ->
+publish image publicly -> reply with Post/Cancel buttons -> only posts to
+Facebook/Instagram once you tap Post.
 
 Video is NOT wired yet -- destinations only know how to post images so
 far. A video message gets acknowledged but not posted; see
@@ -20,7 +21,7 @@ import uuid
 
 from bot import state
 from phase3_content.destinations import zaf_consultancy_fb_ig
-from shared import anthropic_client, github_publish, telegram_api
+from shared import caption_generator, github_publish, telegram_api
 
 IMAGE_REPO = "osastdl/zaf-consultancy-post-images"
 
@@ -48,8 +49,7 @@ def handle_photo(message):
     file_path = telegram_api.get_file_path(file_id)
     image_bytes = telegram_api.download_file(file_path)
 
-    caption, hashtags = anthropic_client.generate_caption(image_bytes)
-    full_caption = anthropic_client.format_caption(caption, hashtags)
+    full_caption = caption_generator.generate_caption(hint_text=message.get("caption"))
 
     repo_path = f"bot-uploads/{uuid.uuid4().hex}.jpg"
     image_url = github_publish.publish(

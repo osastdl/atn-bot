@@ -18,7 +18,6 @@ jobs:
       - name: Poll for updates and process
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           IMAGE_REPO_TOKEN: ${{ secrets.IMAGE_REPO_TOKEN }}
           ZAF_CONSULTANCY_FB_PAGE_ID: ${{ secrets.ZAF_CONSULTANCY_FB_PAGE_ID }}
           ZAF_CONSULTANCY_FB_PAGE_TOKEN: ${{ secrets.ZAF_CONSULTANCY_FB_PAGE_TOKEN }}
