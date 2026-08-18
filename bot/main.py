@@ -50,21 +50,30 @@ WELCOME = (
 
 NOTHING_PENDING = "\U0001F937 Nothing pending to confirm right now."
 
-UNRECOGNIZED = "Send a photo, or /start."
+UNRECOGNIZED = "Send a photo to post it, or tap \U0001F4CB Grant list below."
 
 VIDEO_NOT_SUPPORTED = (
     "\U0001F3AC Got the video, but video posting isn't wired up yet -- "
     "only photos work right now."
 )
 
+BOT_COMMANDS = [
+    {"command": "start", "description": "Show the menu"},
+    {"command": "grants", "description": "Curated funder list (Phase 1)"},
+]
+
 
 def handle_start(message):
-    telegram_api.send_message(message["chat"]["id"], WELCOME, parse_mode="HTML")
+    telegram_api.send_message(
+        message["chat"]["id"], WELCOME, parse_mode="HTML",
+        reply_markup=telegram_api.PERSISTENT_KEYBOARD,
+    )
 
 
 def handle_grants(message):
     telegram_api.send_message(
-        message["chat"]["id"], grants_commands.format_funder_list(), parse_mode="HTML"
+        message["chat"]["id"], grants_commands.format_funder_list(), parse_mode="HTML",
+        reply_markup=telegram_api.PERSISTENT_KEYBOARD,
     )
 
 
@@ -176,13 +185,17 @@ def handle_message(message):
         handle_video(message)
     elif text.startswith("/start"):
         handle_start(message)
-    elif text.startswith("/grants"):
+    elif text.startswith("/grants") or text == "\U0001F4CB grant list":
         handle_grants(message)
     else:
-        telegram_api.send_message(message["chat"]["id"], UNRECOGNIZED)
+        telegram_api.send_message(
+            message["chat"]["id"], UNRECOGNIZED,
+            reply_markup=telegram_api.PERSISTENT_KEYBOARD,
+        )
 
 
 def poll_once():
+    telegram_api.set_my_commands(BOT_COMMANDS)
     offset = state.get_offset()
     result = telegram_api.get_updates(offset=offset, timeout=5)
     for update in result.get("result", []):

@@ -60,6 +60,21 @@ def send_photo(chat_id, photo, caption=None, parse_mode=None):
     return call("sendPhoto", **params)
 
 
+def set_my_commands(commands):
+    """commands: [{"command": "grants", "description": "..."}, ...] --
+    populates the tappable "/" menu next to the message box, so options
+    are discoverable without typing anything. Cheap and idempotent, safe
+    to call every poll run."""
+    return call("setMyCommands", commands=commands)
+
+
+PERSISTENT_KEYBOARD = {
+    "keyboard": [["\U0001F4CB Grant list"]],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+
 def get_file_path(file_id):
     return call("getFile", file_id=file_id)["result"]["file_path"]
 
