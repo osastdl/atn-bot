@@ -1,0 +1,2 @@
+# Deliberately minimal — stdlib (urllib) covers Telegram + Graph API calls,
+# matching the proven no-pip-dependency pattern from VV Outreach.
