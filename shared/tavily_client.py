@@ -13,13 +13,26 @@ import urllib.request
 API_URL = "https://api.tavily.com/search"
 
 
-def search(query, max_results=5):
-    """Returns a list of {title, url, content} dicts."""
+def search(query, max_results=5, time_range=None, topic=None):
+    """Returns a list of {title, url, content} dicts.
+
+    time_range: "day"/"week"/"month"/"year" -- filters Tavily's own index
+    by publish/last-updated date. Without this, results have no recency
+    bias at all and old-but-still-well-ranked pages (seen in production:
+    results from 2022) surface just as readily as current ones.
+    topic: "news" biases toward dated news coverage (best for monitoring
+    breaking events); leave as default "general" for things like funder
+    pages that are live/rolling application forms, not news articles.
+    """
     body = {
         "api_key": os.environ["TAVILY_API_KEY"],
         "query": query,
         "max_results": max_results,
     }
+    if time_range:
+        body["time_range"] = time_range
+    if topic:
+        body["topic"] = topic
     req = urllib.request.Request(
         API_URL,
         data=json.dumps(body).encode("utf-8"),

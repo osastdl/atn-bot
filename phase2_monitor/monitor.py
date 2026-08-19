@@ -19,35 +19,46 @@ publishing precise location data about anti-trans violence is itself a
 safety risk. Region/country level only.
 """
 
+from datetime import datetime
+
 from phase2_monitor import seen
 from shared import notify, tavily_client
+
+CURRENT_YEAR = datetime.now().year
 
 CATEGORIES = {
     "incident": {
         "label": "\U0001F6A8 Incident",
         "queries": [
-            "transgender murder Africa 2026",
-            "anti-trans violence attack Africa news",
-            "hate crime transgender gender diverse Africa",
+            f"transgender murder Africa {CURRENT_YEAR}",
+            "anti-trans violence attack Africa this week",
+            "hate crime transgender gender diverse Africa latest",
         ],
         "keywords": ["murder", "killed", "attack", "assault", "violence", "hate crime", "beaten", "stabbed"],
+        # Anti-gender-movement activity (conferences, coalition building)
+        # moves slower than breaking incidents/policy news -- a 1-week
+        # window would starve this category of almost everything, so it
+        # gets its own wider setting below instead of the shared default.
+        "time_range": "week",
     },
     "policy": {
         "label": "\U0001F4DC Policy/legislative",
         "queries": [
-            "anti-LGBT bill Africa 2026 parliament",
-            "transgender rights law Africa criminalize",
-            "Africa constitution amendment gender identity ban",
+            f"anti-LGBT bill Africa {CURRENT_YEAR} parliament",
+            "transgender rights law Africa criminalize latest",
+            "Africa constitution amendment gender identity ban recent",
         ],
         "keywords": ["bill", "law", "legislation", "parliament", "criminalize", "ban", "constitution", "amendment"],
+        "time_range": "week",
     },
     "anti_gender_movement": {
         "label": "\U0001F3DB️ Anti-gender movement",
         "queries": [
-            "Family Watch International Africa",
-            "anti-gender movement conference Africa",
+            f"Family Watch International Africa {CURRENT_YEAR}",
+            "anti-gender movement conference Africa recent",
         ],
         "keywords": ["family watch", "anti-gender", "conference", "coalition", "funding"],
+        "time_range": "month",
     },
 }
 
@@ -68,7 +79,10 @@ def run_sweep():
 
     for category_key, category in CATEGORIES.items():
         for query in category["queries"]:
-            for result in tavily_client.search(query, max_results=5):
+            results = tavily_client.search(
+                query, max_results=8, topic="news", time_range=category["time_range"],
+            )
+            for result in results:
                 found += 1
                 if result["url"] in already_seen:
                     continue
