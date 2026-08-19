@@ -32,6 +32,15 @@ jobs:
           ZAF_CONSULTANCY_FB_PAGE_ID: ${{ secrets.ZAF_CONSULTANCY_FB_PAGE_ID }}
           ZAF_CONSULTANCY_FB_PAGE_TOKEN: ${{ secrets.ZAF_CONSULTANCY_FB_PAGE_TOKEN }}
           ZAF_CONSULTANCY_IG_USER_ID: ${{ secrets.ZAF_CONSULTANCY_IG_USER_ID }}
+          # Needed by the /monitor button (list_recent_notifications) and
+          # the Telegram-side "schedule" command (insert_scheduled_post) --
+          # both crashed with KeyError before this was added (confirmed via
+          # a real failed run, 2026-08-19).
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          ATN_BOT_EMAIL: ${{ secrets.ATN_BOT_EMAIL }}
+          ATN_BOT_PASSWORD: ${{ secrets.ATN_BOT_PASSWORD }}
+          ATN_ORG_ID: ${{ secrets.ATN_ORG_ID }}
         run: python -m bot.main
 
       - name: Commit updated bot state
