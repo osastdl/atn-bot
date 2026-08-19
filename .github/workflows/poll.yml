@@ -39,5 +39,14 @@ jobs:
           git config user.name "atn-bot"
           git config user.email "actions@users.noreply.github.com"
           git add content/offset.json content/pending_posts.json
-          git diff --staged --quiet || git commit -m "Bot state update [skip ci]"
-          git push
+          git diff --staged --quiet && exit 0
+          git commit -m "Bot state update [skip ci]"
+          # See grants-sweep.yml's identical step for why this retries --
+          # a concurrent run pushing first must not lose this run's state.
+          for i in 1 2 3 4 5; do
+            git push && exit 0
+            echo "Push rejected, rebasing onto origin/main and retrying (attempt $i)..."
+            git pull --rebase origin main
+          done
+          echo "::error::Failed to push bot state after 5 attempts"
+          exit 1
